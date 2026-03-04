@@ -6,9 +6,14 @@ use bevy_skein::SkeinPlugin;
 
 use assets::*;
 use menu::*;
-
+use museum::*;
+use camera::*;
+use character_controls::*;
 mod assets;
 mod menu;
+mod camera;
+mod character_controls;
+mod museum;
 
 fn main() {
     App::new()
@@ -18,10 +23,13 @@ fn main() {
                 SkeinPlugin::default(),
                 MeshPickingPlugin,
                 SeedlingPlugin::default(),
+                MenuPlugin,
+                CameraPlugin,
+                CharacterControllerPlugin,
+                MuseumPlugin,
 ))
         .init_state::<AssetLoadingState>()
         .init_state::<LevelState>()
-        .add_plugins(MenuPlugin)
         //loading state  systems
         .add_loading_state(
             LoadingState::new(AssetLoadingState::LoadingGlb)

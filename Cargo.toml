@@ -58,6 +58,4 @@ too_many_arguments = "allow"
 type_complexity = "allow"
 
 
-[[bench]]
-name = "my_benchmark"
-harness = false
+
