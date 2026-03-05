@@ -8,11 +8,11 @@ use assets::*;
 use menu::*;
 use museum::*;
 use camera::*;
-use character_controls::*;
+use character_controller::*;
 mod assets;
 mod menu;
 mod camera;
-mod character_controls;
+mod character_controller;
 mod museum;
 
 fn main() {

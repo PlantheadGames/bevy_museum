@@ -15,7 +15,7 @@ fn museum_setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,){
-     commands.spawn((
+/*     commands.spawn((
             Camera3d::default(),
             AmbientLight{
                 brightness: 1000.0,
@@ -35,7 +35,7 @@ fn museum_setup(
             Restitution::ZERO.with_combine_rule(CoefficientCombine::Min),
             GravityScale(2.0),
     ));
-
+*/
     commands.spawn((
            DirectionalLight {
                 illuminance: 1000.0,
