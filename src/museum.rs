@@ -17,6 +17,10 @@ fn museum_setup(
     mut materials: ResMut<Assets<StandardMaterial>>,){
      commands.spawn((
             Camera3d::default(),
+            AmbientLight{
+                brightness: 1000.0,
+                ..default()
+            },
             PlayerCamera,
             CollisionEventsEnabled,
             Mesh3d(meshes.add(Capsule3d::new(0.4, 1.0))),
@@ -39,6 +43,16 @@ fn museum_setup(
             },
             MuseumLayoutAsset
             ));
+
+
+     commands.spawn((
+            RigidBody::Static,
+            Collider::cuboid(100.0, 1.0, 100.0),
+            Mesh3d(meshes.add(Cuboid::new(100.0,1.0,100.0))),
+            MeshMaterial3d(materials.add(Color::srgb(0.8, 0.7, 0.6))),
+            Transform::from_xyz(0.0, -1.0, 0.0),
+    ));
+
 
     commands.spawn((
             RigidBody::Static,
