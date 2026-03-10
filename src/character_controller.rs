@@ -30,7 +30,7 @@ impl Plugin for CharacterControllerPlugin{
         app.insert_resource(DoubleJumpCounter(0));
         app.add_message::<MovementAction>();
         app.add_systems(OnEnter(LevelState::Level), setup);
-        app.add_systems(Update, (move_camera,gravity,input).chain().run_if(in_state(LevelState::Level)));
+        app.add_systems(Update, (move_camera,gravity,movement_action).chain().run_if(in_state(LevelState::Level)));
     }
 }
 
@@ -40,11 +40,10 @@ fn gravity(mut linear_velocity: Single<&mut LinearVelocity, With<PlayerCam>>,
     mut jump_counter: ResMut<DoubleJumpCounter>
 ){
     linear_velocity.y -= 9.81 *time.delta_secs();
-        if transform.translation.y < 0.0 {
-            transform.translation.y = 0.0;
-            linear_velocity.y = 0.0;
-            jump_counter.0 = 0;
-        }
+    if transform.translation.y < 0.1 {
+        transform.translation.y = 0.0;
+        jump_counter.0 = 0;
+    }
 }
 fn move_camera(
     mut transform: Single<&mut Transform, With<PlayerCam>>,
@@ -52,8 +51,8 @@ fn move_camera(
     mouse_motion: Res<AccumulatedMouseMotion>,
     window: Single<&Window, With<PrimaryWindow>>,
     time: Res<Time>,
-    mut linear_velocity: Query<&mut LinearVelocity, With<PlayerCam>>,
-    mut movement_writer: MessageWriter<MovementAction>,
+    linear_velocity: Query<&mut LinearVelocity, With<PlayerCam>>,
+    movement_writer: MessageWriter<MovementAction>,
 ) {
     if !window.focused {
         return;
@@ -69,23 +68,35 @@ fn move_camera(
         sensitivity = 0.1 / window.width().min(window.height());
     }
 
-
-
     let (mut yaw, mut pitch, _roll) = transform.rotation.to_euler(YXZ);
     pitch -= mouse_motion.delta.y * dt * sensitivity;
     yaw -= mouse_motion.delta.x * dt * sensitivity;
     pitch = pitch.clamp(-1.57, 1.57);
     transform.rotation = Quat::from_euler(YXZ, yaw, pitch, 0.0);
-    let mut delta = Vec3::ZERO;
 
+    //let direction = 
+    movement_direction(transform, input, movement_writer);
+/*
+    for mut linear_velocity in linear_velocity{
+        linear_velocity.x = direction.x * time.delta_secs() * SPEED;
+        linear_velocity.z = direction.z * time.delta_secs() * SPEED;
+
+    }
+    */
+}
+
+fn movement_direction(
+    transform: Single<&mut Transform, With<PlayerCam>>,
+    input: Res<ButtonInput<KeyCode>>,
+    mut movement_writer: MessageWriter<MovementAction>,
+) -> Vec3{
+    let mut delta = Vec3::ZERO;
     for key in input.get_pressed() {
         match key {
             KeyCode::KeyA => delta.x += -1.0,
             KeyCode::KeyD => delta.x += 1.0,
             KeyCode::KeyW => delta.z += 1.0,
             KeyCode::KeyS => delta.z += -1.0,
-            //            KeyCode::ShiftLeft => delta.y += -1.0,
-            //            KeyCode::Space => delta.y += 1.0,
             _ => (),
         }
     }
@@ -93,13 +104,8 @@ fn move_camera(
     let forward = transform.forward().as_vec3() *  delta.z;
     let right = transform.right().as_vec3() * delta.x;
     let up = transform.up().as_vec3() * delta.y;
-    let mut to_move = forward + right + up;
+    let to_move = forward + right + up;
     let direction = to_move.normalize_or_zero();
-    for mut linear_velocity in linear_velocity{
-        linear_velocity.x = direction.x * time.delta_secs() * SPEED;
-        linear_velocity.z = direction.z * time.delta_secs() * SPEED;
-    
-    }
     if direction != Vector3::ZERO {
         movement_writer.write(MovementAction::Move(direction));
     }
@@ -107,15 +113,16 @@ fn move_camera(
     if input.just_pressed(KeyCode::Space) {
         movement_writer.write(MovementAction::Jump);
     }
+    direction
 }
-
-fn input(
+fn movement_action(
     mut movement_reader: MessageReader<MovementAction>,
-    mut controllers: Query<(&mut LinearVelocity, &Transform), With<PlayerCam>>,
+    mut controllers: Query<(&mut LinearVelocity, &mut Transform), With<PlayerCam>>,
     mut jump_counter: ResMut<DoubleJumpCounter>,
+    time: Res<Time>
 ){
     for event in movement_reader.read() {
-        for (mut linear_velocity, transform) in &mut controllers {
+        for (mut linear_velocity, mut transform) in &mut controllers {
             match event {
                 MovementAction::Jump => {
                     println!("{:#?}, {:#?}", linear_velocity.y, jump_counter.0);
@@ -125,17 +132,15 @@ fn input(
                         linear_velocity.y += JUMP_IMPULSE;
                     }
                 }
-                MovementAction::Move(direction) => {()}
-                /*                    let world_direction =
-                                      transform.rotation * Vec3::new(direction.x, 0.0, direction.y);
-                                      let world_velocity = world_direction.normalize_or_zero() * SPEED;
-                                      linear_velocity.x = world_velocity.x;
-                                      linear_velocity.z = world_velocity.z;
-                                      }
-                                      */
+                MovementAction::Move(direction) => 
+                {
+                    linear_velocity.x = direction.x * time.delta_secs() * SPEED;
+                    linear_velocity.z = direction.z * time.delta_secs() * SPEED;
+                }
+
+            }
         }
     }
-}
 }
 fn setup(mut commands: Commands) {
     commands.spawn((
@@ -143,7 +148,8 @@ fn setup(mut commands: Commands) {
             Transform::from_xyz(10.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
             PlayerCam,
             Collider::cuboid(1.0,1.0,1.0), 
-            RigidBody::Kinematic, 
+            LinearDamping(0.9),
+            RigidBody::Dynamic, 
             Velocity(Vec3::ZERO),
             LockedAxes::ROTATION_LOCKED,
             AmbientLight{
