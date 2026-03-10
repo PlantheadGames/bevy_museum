@@ -5,7 +5,7 @@ use EulerRot::YXZ;
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::window::PrimaryWindow;
 
-const SPEED: f32 = 150.0;
+const SPEED: f32 = 300.0;
 const JUMP_IMPULSE:f32 = 7.0;
 
 #[derive(Resource)]
@@ -147,7 +147,7 @@ fn setup(mut commands: Commands) {
             Velocity(Vec3::ZERO),
             LockedAxes::ROTATION_LOCKED,
             AmbientLight{
-                brightness: 1000.0,
+                brightness: 3000.0,
                 ..default()
             },
 
