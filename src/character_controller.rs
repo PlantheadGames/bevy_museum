@@ -1,23 +1,32 @@
 use crate::*;
 
-use avian3d::{math::*, prelude::*};
 use EulerRot::YXZ;
+use avian3d::math::*;
 use bevy::input::mouse::AccumulatedMouseMotion;
+use bevy::picking::Pickable;
 use bevy::window::PrimaryWindow;
 
 const SPEED: f32 = 300.0;
-const JUMP_IMPULSE:f32 = 7.0;
+const JUMP_IMPULSE: f32 = 7.0;
+const FOV: f32 = 90.0;
+
+#[derive(Component)]
+#[component(storage = "SparseSet")]
+pub struct Grounded;
+
+#[derive(Component)]
+pub struct MaxSlopeAngle(Scalar);
 
 #[derive(Resource)]
 struct DoubleJumpCounter(u8);
 
 #[derive(Message)]
-enum MovementAction{
+enum MovementAction {
     Move(Vector3),
     Jump,
 }
 
-#[derive(Component,Deref, DerefMut)]
+#[derive(Component, Deref, DerefMut)]
 pub struct Velocity(Vec3);
 
 #[derive(Component)]
@@ -25,33 +34,71 @@ pub struct PlayerCam;
 
 pub struct CharacterControllerPlugin;
 
-impl Plugin for CharacterControllerPlugin{
+impl Plugin for CharacterControllerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(DoubleJumpCounter(0));
         app.add_message::<MovementAction>();
         app.add_systems(OnEnter(LevelState::Level), setup);
-        app.add_systems(Update, (move_camera,gravity,movement_action).chain().run_if(in_state(LevelState::Level)));
+        app.add_systems(
+            Update,
+            (move_camera, gravity, movement_action, update_grounded, drag_dragable)
+            .chain()
+            .run_if(in_state(LevelState::Level)),
+        );
     }
 }
 
-fn gravity(mut linear_velocity: Single<&mut LinearVelocity, With<PlayerCam>>,
+
+fn update_grounded(
+    mut commands: Commands,
+    mut jump_counter: ResMut<DoubleJumpCounter>,
+    mut query: Query<
+    (Entity, &ShapeHits, &Rotation, Option<&MaxSlopeAngle>),
+    With<PlayerCam>,
+    >,
+) {
+    for (entity, hits, rotation, max_slope_angle) in &mut query {
+        // The character is grounded if the shape caster has a hit with a normal
+        // that isn't too steep.
+        let is_grounded = hits.iter().any(|hit| {
+            if let Some(angle) = max_slope_angle {
+                (rotation * -hit.normal2).angle_between(Vector::Y).abs() <= angle.0
+            } else {
+                true
+            }
+        });
+        println!("{:#?}", is_grounded);
+        if is_grounded {
+            jump_counter.0 = 0;
+            commands.entity(entity).insert(Grounded);
+        } else {
+            commands.entity(entity).remove::<Grounded>();
+        }
+    }
+}
+
+fn gravity(
+    mut linear_velocity: Single<&mut LinearVelocity, With<PlayerCam>>,
     mut transform: Single<&mut Transform, With<PlayerCam>>,
     time: Res<Time>,
-    mut jump_counter: ResMut<DoubleJumpCounter>
-){
-    linear_velocity.y -= 9.81 *time.delta_secs();
+    mut jump_counter: ResMut<DoubleJumpCounter>,
+) {
+    linear_velocity.y -= 9.81 * time.delta_secs();
     if transform.translation.y < 0.1 {
         transform.translation.y = 0.0;
+    }
+    if linear_velocity.y == 0.0 {
         jump_counter.0 = 0;
     }
 }
+
+
 fn move_camera(
     mut transform: Single<&mut Transform, With<PlayerCam>>,
     input: Res<ButtonInput<KeyCode>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     window: Single<&Window, With<PrimaryWindow>>,
     time: Res<Time>,
-    linear_velocity: Query<&mut LinearVelocity, With<PlayerCam>>,
     movement_writer: MessageWriter<MovementAction>,
 ) {
     if !window.focused {
@@ -74,22 +121,14 @@ fn move_camera(
     pitch = pitch.clamp(-1.57, 1.57);
     transform.rotation = Quat::from_euler(YXZ, yaw, pitch, 0.0);
 
-    //let direction = 
     movement_direction(transform, input, movement_writer);
-/*
-    for mut linear_velocity in linear_velocity{
-        linear_velocity.x = direction.x * time.delta_secs() * SPEED;
-        linear_velocity.z = direction.z * time.delta_secs() * SPEED;
-
-    }
-    */
 }
 
 fn movement_direction(
     transform: Single<&mut Transform, With<PlayerCam>>,
     input: Res<ButtonInput<KeyCode>>,
     mut movement_writer: MessageWriter<MovementAction>,
-) -> Vec3{
+) -> Vec3 {
     let mut delta = Vec3::ZERO;
     for key in input.get_pressed() {
         match key {
@@ -101,7 +140,7 @@ fn movement_direction(
         }
     }
 
-    let forward = transform.forward().as_vec3() *  delta.z;
+    let forward = transform.forward().as_vec3() * delta.z;
     let right = transform.right().as_vec3() * delta.x;
     let up = transform.up().as_vec3() * delta.y;
     let to_move = forward + right + up;
@@ -117,12 +156,12 @@ fn movement_direction(
 }
 fn movement_action(
     mut movement_reader: MessageReader<MovementAction>,
-    mut controllers: Query<(&mut LinearVelocity, &mut Transform), With<PlayerCam>>,
+    mut controllers: Query<&mut LinearVelocity, With<PlayerCam>>,
     mut jump_counter: ResMut<DoubleJumpCounter>,
-    time: Res<Time>
-){
+    time: Res<Time>,
+) {
     for event in movement_reader.read() {
-        for (mut linear_velocity, mut transform) in &mut controllers {
+        for mut linear_velocity in &mut controllers {
             match event {
                 MovementAction::Jump => {
                     println!("{:#?}, {:#?}", linear_velocity.y, jump_counter.0);
@@ -132,12 +171,10 @@ fn movement_action(
                         linear_velocity.y += JUMP_IMPULSE;
                     }
                 }
-                MovementAction::Move(direction) => 
-                {
+                MovementAction::Move(direction) => {
                     linear_velocity.x = direction.x * time.delta_secs() * SPEED;
                     linear_velocity.z = direction.z * time.delta_secs() * SPEED;
                 }
-
             }
         }
     }
@@ -145,17 +182,53 @@ fn movement_action(
 fn setup(mut commands: Commands) {
     commands.spawn((
             Camera3d::default(),
+            Projection::from(PerspectiveProjection {
+                fov: FOV.to_radians(),
+                ..default()
+            }),
             Transform::from_xyz(10.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
             PlayerCam,
-            Collider::cuboid(1.0,1.0,1.0), 
+            Collider::cuboid(1.0, 1.0, 1.0),
             LinearDamping(0.9),
-            RigidBody::Dynamic, 
+            RigidBody::Dynamic,
             Velocity(Vec3::ZERO),
             LockedAxes::ROTATION_LOCKED,
-            AmbientLight{
+            AmbientLight {
                 brightness: 3000.0,
                 ..default()
             },
+            ShapeCaster::new(
+                Collider::cuboid(1.0, 1.0, 1.0),
+                Vector::ZERO,
+                Quaternion::default(),
+                Dir3::NEG_Y,
+            ).with_max_distance(0.1),
+                MaxSlopeAngle(PI * 0.45),
+                ));
+}
+fn drag_dragable(
+    transforms: Query<(&Transform, &mut LinearVelocity), (With<Pickable>, Without<PlayerCam>)>,
+    player_transform: Single<&mut Transform, With<PlayerCam>>,
+    mouse: Res<ButtonInput<MouseButton>>,
+) {
+    for (transform, mut linear_velocity) in transforms {
+        let direction = transform.translation - player_transform.translation;
 
-    ));
+        let direction_to_object = direction.normalize();
+        let forward = player_transform.forward();
+        let target_simularity_percent = 0.8;
+        let in_view = forward.dot(direction_to_object) > target_simularity_percent;
+
+        if player_transform.translation.distance(transform.translation) < 4.0
+            && mouse.pressed(MouseButton::Left)
+                && in_view
+        {
+            let distance_in_front = 3.5;
+            //       let forward = player_transform.forward();
+            let target_position = player_transform.translation + (forward * distance_in_front);
+            let hold_direction = target_position - transform.translation;
+            let speed = 15.0;
+            linear_velocity.0 = hold_direction * speed;
+        }
+    }
 }

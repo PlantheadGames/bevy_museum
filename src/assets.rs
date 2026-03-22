@@ -3,14 +3,15 @@ use crate::*;
 #[derive(AssetCollection, Resource)]
 pub struct GlbAssets {
     #[asset(path = "test.glb#Scene0")]
-    pub main_scene: Handle<Scene>,
+    pub _main_scene: Handle<Scene>,
 }
-
 
 #[derive(AssetCollection, Resource)]
 pub struct ImageAssets {
     #[asset(path = "test.png")]
     pub test: Handle<Image>,
+    #[asset(path = "cursor.png")]
+    pub cursor: Handle<Image> 
 }
 
 #[derive(AssetCollection, Resource)]
