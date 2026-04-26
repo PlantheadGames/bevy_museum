@@ -30,19 +30,6 @@ fn setup(
     ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMesh),
     ));
     
-
-    commands
-        .spawn((
-            RigidBody::Dynamic,
-            Collider::cuboid(1.0, 1.0, 1.0),
-            Mesh3d(meshes.add(Cuboid::default())),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color_texture: Some(images.add(uv_debug_texture())),
-                ..default()
-            })),
-            Transform::from_xyz(3.0, 5.0, 3.0),
-            Pickable::default(),
-        ));
 }
 
 
