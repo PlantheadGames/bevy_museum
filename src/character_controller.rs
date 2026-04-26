@@ -58,8 +58,6 @@ fn update_grounded(
     >,
 ) {
     for (entity, hits, rotation, max_slope_angle) in &mut query {
-        // The character is grounded if the shape caster has a hit with a normal
-        // that isn't too steep.
         let is_grounded = hits.iter().any(|hit| {
             if let Some(angle) = max_slope_angle {
                 (rotation * -hit.normal2).angle_between(Vector::Y).abs() <= angle.0
@@ -67,7 +65,6 @@ fn update_grounded(
                 true
             }
         });
-        println!("{:#?}", is_grounded);
         if is_grounded {
             jump_counter.0 = 0;
             commands.entity(entity).insert(Grounded);
@@ -194,7 +191,7 @@ fn setup(mut commands: Commands) {
             Velocity(Vec3::ZERO),
             LockedAxes::ROTATION_LOCKED,
             AmbientLight {
-                brightness: 3000.0,
+                brightness: 1000.0,
                 ..default()
             },
             ShapeCaster::new(

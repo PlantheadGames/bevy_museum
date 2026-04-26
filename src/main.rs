@@ -12,6 +12,7 @@ pub use museum::*;
 pub use menu::*;
 pub use ui::*;
 pub use utils::*;
+use light::*;
 mod assets;
 mod camera;
 mod character_controller;
@@ -19,7 +20,7 @@ mod menu;
 mod museum;
 mod ui;
 mod utils;
-
+mod light;
 
 fn main() {
     App::new()
@@ -34,6 +35,7 @@ fn main() {
             CharacterControllerPlugin,
             CustomPointerPlugin,
             MuseumLayoutPlugin,
+            LightPlugin,
         ))
         .init_state::<AssetLoadingState>()
         .init_state::<LevelState>()
@@ -62,6 +64,7 @@ pub enum LevelState {
     StartUp,
     Menu,
     Level,
+    Light,
     End,
 }
 

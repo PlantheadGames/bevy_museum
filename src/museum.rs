@@ -15,6 +15,7 @@ fn setup(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut glb: Res<GlbAssets>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn((
@@ -24,18 +25,11 @@ fn setup(
         },
         MuseumLayoutAsset,
     ));
-
-    commands.spawn((
-        RigidBody::Static,
-        Collider::cuboid(100.0, 1.0, 100.0),
-        Mesh3d(meshes.add(Cuboid::new(100.0, 1.0, 100.0))),
-        MeshMaterial3d(materials.add(StandardMaterial
-                {base_color_texture: Some(images.add(uv_debug_texture())),
-            ..default()}
-        )),
-        Transform::from_xyz(0.0, -1.0, 0.0),
-        MuseumLayoutAsset,
+    commands.spawn((SceneRoot(glb.test_map.clone()),
+    RigidBody::Static,
+    ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMesh),
     ));
+    
 
     commands
         .spawn((
@@ -50,4 +44,5 @@ fn setup(
             Pickable::default(),
         ));
 }
+
 

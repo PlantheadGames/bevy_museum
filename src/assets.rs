@@ -4,6 +4,8 @@ use crate::*;
 pub struct GlbAssets {
     #[asset(path = "test.glb#Scene0")]
     pub _main_scene: Handle<Scene>,
+    #[asset(path = "TestMap.glb#Scene0")]
+    pub test_map: Handle<Scene>,
 }
 
 #[derive(AssetCollection, Resource)]
