@@ -12,7 +12,6 @@ impl Plugin for CustomPointerPlugin {
 
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     window: Single<Entity, With<Window>>,
     mut cursor: Single<&mut CursorOptions, With<PrimaryWindow>>,
     images: Res<ImageAssets>,

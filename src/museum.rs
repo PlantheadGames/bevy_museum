@@ -1,4 +1,5 @@
 use crate::*;
+use bevy::post_process::bloom::Bloom;
 
 pub struct MuseumLayoutPlugin;
 
@@ -13,9 +14,7 @@ impl Plugin for MuseumLayoutPlugin {
 
 fn setup(
     mut commands: Commands,
-    mut images: ResMut<Assets<Image>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut glb: Res<GlbAssets>,
+    glb: Res<GlbAssets>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn((
@@ -28,6 +27,7 @@ fn setup(
     commands.spawn((SceneRoot(glb.test_map.clone()),
     RigidBody::Static,
     ColliderConstructorHierarchy::new(ColliderConstructor::TrimeshFromMesh),
+//   Bloom::OLD_SCHOOL,
     ));
     
 }
